@@ -22,13 +22,30 @@ html,body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-seri
   display:flex;align-items:center;justify-content:space-between;gap:16px}
 
 .funil-wrap{position:relative}
-.funil-btn{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:9px;border:1px solid var(--border);background:var(--surf);color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px}
-.funil-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex-shrink:0}
-.funil-name{font-size:12px;font-weight:600;color:var(--text-strong)}
-.funil-status{font-size:9px;color:var(--accent);letter-spacing:.04em}
-#sel-deb{background:transparent;border:none;color:var(--text-strong);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;outline:none;padding:0;max-width:230px}
-#sel-deb option{background:#121826;color:var(--text)}
+.funil-btn{display:flex;align-items:center;gap:9px;padding:7px 12px;border-radius:12px;
+  border:1px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;
+  font-family:'DM Sans',sans-serif;min-width:212px;text-align:left;transition:border-color .15s}
 .funil-btn:hover{border-color:var(--border-h)}
+.funil-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;
+  box-shadow:0 0 0 3px rgba(59,130,246,.18)}
+.funil-txt{flex:1;min-width:0;display:flex;flex-direction:column}
+.funil-name{font-size:12.5px;font-weight:700;color:var(--text-strong);line-height:1.25;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.funil-status{font-size:9.5px;color:var(--accent);letter-spacing:.04em;margin-top:1px}
+.funil-caret{font-size:8px;color:var(--muted);flex-shrink:0;transition:transform .15s}
+.funil-wrap.open .funil-caret{transform:rotate(180deg)}
+.funil-menu{position:absolute;top:calc(100% + 7px);left:0;min-width:252px;z-index:60;display:none;
+  background:#131a2a;border:1px solid var(--border-h);border-radius:14px;padding:7px;
+  box-shadow:0 14px 38px rgba(2,6,20,.55)}
+.funil-wrap.open .funil-menu{display:block}
+.funil-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px 11px;border-radius:9px;
+  border:none;background:transparent;cursor:pointer;color:var(--muted);line-height:1.3;
+  font-family:'DM Sans',sans-serif;font-size:12.5px;text-align:left;transition:background .12s,color .12s}
+.funil-item+.funil-item{margin-top:2px}
+.funil-item:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.fi-dot{width:6px;height:6px;border-radius:50%;background:#3d485c;flex-shrink:0}
+.funil-item.on{background:rgba(59,130,246,.16);color:var(--text-strong);font-weight:600}
+.funil-item.on .fi-dot{background:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.2)}
 
 .hdr-tabs{display:flex;align-items:center;gap:4px}
 .htab{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;color:var(--muted);transition:all .15s;white-space:nowrap}
@@ -173,14 +190,16 @@ canvas{display:block}
 </head>
 <body>
 <header class="app-hdr">
-  <div class="funil-wrap">
-    <label class="funil-btn" for="sel-deb">
+  <div class="funil-wrap" id="deb-wrap">
+    <button class="funil-btn" id="deb-btn" onclick="toggleDebMenu(event)" aria-haspopup="listbox" aria-expanded="false">
       <span class="funil-dot"></span>
-      <div>
-        <select id="sel-deb" onchange="trocaDebriefing(this.value)"></select>
-        <div class="funil-status" id="deb-sub"></div>
-      </div>
-    </label>
+      <span class="funil-txt">
+        <span class="funil-name" id="deb-nome"></span>
+        <span class="funil-status">ativo</span>
+      </span>
+      <span class="funil-caret">▼</span>
+    </button>
+    <div class="funil-menu" id="deb-menu" role="listbox"></div>
   </div>
   <nav class="hdr-tabs" id="hdr-tabs"></nav>
   <div class="hdr-right" id="hdr-gerado"></div>
@@ -1452,13 +1471,29 @@ function notaSoNoTotal(){
 }
 
 /* ── Troca de debriefing: zera o estado e volta pra Principal ──────────── */
+function toggleDebMenu(ev){
+  if(ev) ev.stopPropagation();
+  const w=document.getElementById("deb-wrap");
+  const aberto=w.classList.toggle("open");
+  document.getElementById("deb-btn").setAttribute("aria-expanded",aberto?"true":"false");
+}
+function fechaDebMenu(){
+  const w=document.getElementById("deb-wrap");
+  if(!w) return;
+  w.classList.remove("open");
+  document.getElementById("deb-btn").setAttribute("aria-expanded","false");
+}
+document.addEventListener("click",fechaDebMenu);
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") fechaDebMenu(); });
+
 function montaShell(){
-  const sel=document.getElementById("sel-deb");
-  if(!sel.options.length){
-    sel.innerHTML=DB_ORDEM.map(k=>`<option value="${k}">${esc(DEBRIEFINGS[k].lancamento.rotulo)}</option>`).join("");
-  }
-  sel.value=ATIVO;
-  document.getElementById("deb-sub").textContent=DATA.lancamento.sub;
+  document.getElementById("deb-nome").textContent=DATA.lancamento.rotulo;
+  document.getElementById("deb-menu").innerHTML=DB_ORDEM.map(k=>{
+    const d=DEBRIEFINGS[k];
+    return `<button class="funil-item${k===ATIVO?" on":""}" role="option" aria-selected="${k===ATIVO}"
+      title="${esc(d.lancamento.sub)}" onclick="trocaDebriefing('${k}')"><span class="fi-dot"></span>${esc(d.lancamento.rotulo)}</button>`;
+  }).join("");
+  fechaDebMenu();
   document.getElementById("hdr-gerado").textContent="gerado em "+DATA.gerado_em;
   document.getElementById("hdr-tabs").innerHTML=
     DATA.abas.map(([id,lbl])=>`<button class="htab" onclick="navTo('${id}')">${lbl}</button>`).join("");
@@ -1478,7 +1513,7 @@ function aplicaDebriefing(key){
   navTo("principal");
   window.scrollTo(0,0);
 }
-function trocaDebriefing(key){ if(key && DEBRIEFINGS[key]) aplicaDebriefing(key); }
+function trocaDebriefing(key){ fechaDebMenu(); if(key && DEBRIEFINGS[key]) aplicaDebriefing(key); }
 
 aplicaDebriefing(DB_ORDEM[0]);
 
